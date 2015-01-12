@@ -61,14 +61,13 @@
         for (var i = 0; i < bucketSize; i++) {
             var oldEvnt = this.Evnts[slot[i]];
             oldEvnt.collisionSize = bucketSize + 1; // + new event
-            debugger
+
             if (newEvnt.start > oldEvnt.start) {
                 newEvnt.collisionPosition = slot.length;
             }
             else {
                 newEvnt.collisionPosition = oldEvnt.collisionPosition;
                 oldEvnt.collisionPosition = oldEvnt.collisionPosition + 1;
-                debugger
             }
         }
 
