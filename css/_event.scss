@@ -2,7 +2,7 @@
 // 720/(24*60) = 0.5 : each minute is 0.5px tall.
 
 $event_background: white;
-$event_margin: 0;
+$event_margin: 0 10px;
 $event_border: 5px solid dodgerblue;
 
 .event {

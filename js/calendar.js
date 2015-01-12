@@ -35,7 +35,8 @@
             id: uniqueID(),
             start: rawEvent.start,
             end: rawEvent.end,
-            collisionSize: 0, // determines event width
+            collisionSize: 1, // determines event width
+            collisionPosition: null, // determines left position
             // info: {},
             // isAllDay: false;
         }
@@ -54,25 +55,47 @@
         return newBucket;
     }
 
-    function updateCollidedEvnts(timeslotIndex, newEvnt) {
-        var slot = this.timeslots[timeslotIndex];
+    function updateCollidedEvnts(newEvnt) {
+        var slot = this.timeslots[newEvnt.start];
         var bucketSize = slot.length;
-
+        var smallestPossible = 0;
+        // compare, for every event newEvnt collides with
+        // newEvnt.collisionPosition = first event that it doesn't collide with
         for (var i = 0; i < bucketSize; i++) {
-            var oldEvnt = this.Evnts[slot[i]];
-            oldEvnt.collisionSize = bucketSize + 1; // + new event
+            var collidingEvnt = this.Evnts[slot[i]];
 
-            if (newEvnt.start > oldEvnt.start) {
-                newEvnt.collisionPosition = slot.length;
+            if (collidingEvnt.id === newEvnt.id) {
+                return;
             }
-            else {
-                newEvnt.collisionPosition = oldEvnt.collisionPosition;
-                oldEvnt.collisionPosition = oldEvnt.collisionPosition + 1;
+
+            if (collidingEvnt.collisionPosition === null) {
+                collidingEvnt.collisionPosition = 0;
+            }
+            
+            if (collidingEvnt.collisionPosition === smallestPossible) {
+                smallestPossible++;
+            }
+            else if (collidingEvnt.collisionPosition < smallestPossible) {
+
+            }
+            else if (collidingEvnt.collisionPosition > smallestPossible) {
+                smallestPossible = collidingEvnt.collisionPosition - 1;
+            }
+
+            collidingEvnt.collisionSize = bucketSize; // + new event
+            newEvnt.collisionPosition = smallestPossible;
+            newEvnt.collisionSize = bucketSize;
+
+            console.warn('Event ' + newEvnt.id + ' is overlapping with ' + collidingEvnt.id);
+
+            if (newEvnt.id > 2) {
+                debugger
             }
         }
 
         // update new evnt as well
-        newEvnt.collisionSize = slot.length + 1;
+        newEvnt.collisionSize = bucketSize;
+        newEvnt.collisionPosition = smallestPossible;
     }
 
     // Calendar "class"
@@ -86,17 +109,15 @@
         var timeslots = this.timeslots;
         // handle collsions
         for (var i = newEvnt.start; i < newEvnt.end; i++) {
-            var hasCollision = timeslots[i].length;
-            // collision happens, update all collided events.collisionSize
-            if (hasCollision) {
-                // update existing events with new collision
-                updateCollidedEvnts.call(this, i, newEvnt);
-
-                console.warn('Event ' + newEvnt.id + ' is overlapping with ' + timeslots[i].toString());
-            }
-
             // append newEvnt to this timeslot bucket
             timeslots[i] = createNewBucket(timeslots[i], newEvnt);
+        }
+
+        var hasCollision = timeslots[newEvnt.start].length;
+        // collision happens, update all collided events.collisionSize
+        if (hasCollision) {
+            // update existing events with new collision
+            updateCollidedEvnts.call(this, newEvnt);
         }
     }
 
@@ -117,7 +138,7 @@
                             (100/evntToRender.collisionSize);
             var top = evntToRender.start;
             var left = evntToRender.collisionPosition * width;
-            console.log(left);
+
             var eventDiv = $('<div/>');
             eventDiv.addClass(EVENT_CLASS);
 
@@ -181,7 +202,7 @@
 
 $(document).ready(function() {
     // initialize the calendar with the given Evnts
-    var Evnts = [{start:30, end:150}, {start:540, end:600}, {start:560, end:620}, {start:610, end:670}];
+    var Evnts = [{start:30, end:150}, {start:540, end:600}, {start:560, end:620}, {start:610, end:670}, {start: 600, end: 700}];
 
     // if we wanted, we can create multiple instances of calendars if we wanted
     // for example, if we want to see other people's calendars overlayed on top of another
