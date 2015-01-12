@@ -1,0 +1,12 @@
+// This includes all of the required CSS
+// Personally I like to use the BEM model to organize my css
+
+@import 'variables';
+
+// Smaller components, could be re-used in other pages
+
+@import 'event';
+
+// Templates, which includes one or more components
+
+@import 'calendar';

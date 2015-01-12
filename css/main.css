@@ -1,0 +1,16 @@
+.event {
+  position: absolute;
+  left: 0;
+  background: white;
+  border-left: 5px solid dodgerblue;
+  margin: 0; }
+
+.calendar {
+  height: 720px;
+  width: 600px;
+  padding: 0 10px;
+  margin: auto;
+  background: lightgrey;
+  position: relative; }
+
+/*# sourceMappingURL=main.css.map */

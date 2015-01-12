@@ -1,0 +1,24 @@
+// Calendar template
+// 1. Position is relative because events have position absolute
+
+// variables
+
+$calendar_height: 720px;
+$calendar_width: 600px;
+$calendar_padding: 0 10px;
+$calendar_margin: auto;
+$calendar_background: lightgrey;
+
+// layout styles
+.calendar {
+	height: $calendar_height;
+	width: $calendar_width;
+
+	padding: $calendar_padding;
+	margin: $calendar_margin;
+
+	background: $calendar_background;
+
+	// 1
+	position: relative;
+}

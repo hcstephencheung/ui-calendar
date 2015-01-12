@@ -1,0 +1,11 @@
+1. All calendar Events are named Evnts or evnts in code to avoid JS Event keyword
+2. Used 2 patterns for better scope:
+	- CalendarFactory : creates Calendars. this ensures that every new calendar we create are separately scoped
+	- Calendar Prototype : tries to create private/public methods
+		ie. utility functions like collision handling are private functions
+			addEvent function is public to all Calendar objects (easily add new events)
+3. Used a map of timeslots
+	- opted for time performance. using Calendar.timeslot table, we can easily handle detection by checking whether another event exists in that timeslot. this helps reduce # of comparisons as opposed to when we only have Event objects (we will then compare start/end times with every other collided event)
+4. Could really use bower to help modularize the code. However, I didn't want to include it in this interview project to add overhead. I hope in the comments it's clear that we can easily pull out utility functions, Calendar functions, and the CalendarFactory functions into separate modules for cleaner code
+
+timeslot[id, id, id, id...]
