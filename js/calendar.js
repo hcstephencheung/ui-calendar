@@ -69,7 +69,7 @@
             var collidingEvnt = this.Evnts[slot[i]];
 
             if (collidingEvnt.id === newEvnt.id) {
-                break;
+                return;
             }
 
             // first ever collision
