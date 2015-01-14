@@ -205,7 +205,8 @@
 
 $(document).ready(function() {
     // initialize the calendar with the given Evnts
-    var Evnts = [{start:30, end:150}, {start:540, end:600}, {start:560, end:620}, {start:610, end:670}, {start: 600, end: 700}];
+    // var Evnts = [{start:30, end:150}, {start:540, end:600}, {start:560, end:620}, {start:610, end:670}, {start: 600, end: 700}];
+    var Evnts = [{start:30, end:150}, {start:540, end:600}, {start:560, end:620}, {start:610, end:670}];
 
     // if we wanted, we can create multiple instances of calendars if we wanted
     // for example, if we want to see other people's calendars overlayed on top of another
