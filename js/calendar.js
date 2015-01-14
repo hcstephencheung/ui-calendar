@@ -69,7 +69,7 @@
             var collidingEvnt = this.Evnts[slot[i]];
 
             if (collidingEvnt.id === newEvnt.id) {
-                return;
+                continue;
             }
 
             // first ever collision
@@ -88,15 +88,12 @@
             }
             
             newEvnt.collisionPosition = smallestPossible;
-            newEvnt.collisionSize = (newEvnt.collisionSize > bucketSize) ? newEvnt.collisionSize : bucketSize;
             collidingEvnt.collisionSize = (collidingEvnt.collisionSize > bucketSize) ? collidingEvnt.collisionSize : bucketSize; // + new event
+            newEvnt.collisionSize = collidingEvnt.collisionSize;
 
             console.warn('Event ' + newEvnt.id + ' is overlapping with ' + collidingEvnt.id);
             console.log('bucket size: ' + bucketSize);
         }
-
-        // update new evnt as well
-        newEvnt.collisionSize = bucketSize;
     }
 
     // Calendar "class"
