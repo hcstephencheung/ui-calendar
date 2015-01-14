@@ -8,6 +8,7 @@
     // initialize slot with a value
     var EMPTYSLOT = [];
     var EVENT_CLASS = 'event';
+    var MAX_TIMESLOT_COLUMNS = 10;
 
     // just assumes jQuery is ready
     if ($ === undefined) {
@@ -55,19 +56,23 @@
         return newBucket;
     }
 
-    function updateCollidedEvnts(newEvnt) {
-        var slot = this.timeslots[newEvnt.start];
+    function updateCollidedEvnts(timeIndex, newEvnt) {
+        var slot = this.timeslots[timeIndex];
         var bucketSize = slot.length;
         var smallestPossible = 0;
+        // [TODO] : basically, if the timeslot doesn't actually fit at all
+        //          we should default to a new column, given column < max
+        var largestPossible = MAX_TIMESLOT_COLUMNS;
         // compare, for every event newEvnt collides with
         // newEvnt.collisionPosition = first event that it doesn't collide with
         for (var i = 0; i < bucketSize; i++) {
             var collidingEvnt = this.Evnts[slot[i]];
 
             if (collidingEvnt.id === newEvnt.id) {
-                return;
+                break;
             }
 
+            // first ever collision
             if (collidingEvnt.collisionPosition === null) {
                 collidingEvnt.collisionPosition = 0;
             }
@@ -81,21 +86,17 @@
             else if (collidingEvnt.collisionPosition > smallestPossible) {
                 smallestPossible = collidingEvnt.collisionPosition - 1;
             }
-
-            collidingEvnt.collisionSize = bucketSize; // + new event
+            
             newEvnt.collisionPosition = smallestPossible;
-            newEvnt.collisionSize = bucketSize;
+            newEvnt.collisionSize = (newEvnt.collisionSize > bucketSize) ? newEvnt.collisionSize : bucketSize;
+            collidingEvnt.collisionSize = (collidingEvnt.collisionSize > bucketSize) ? collidingEvnt.collisionSize : bucketSize; // + new event
 
             console.warn('Event ' + newEvnt.id + ' is overlapping with ' + collidingEvnt.id);
-
-            if (newEvnt.id > 2) {
-                debugger
-            }
+            console.log('bucket size: ' + bucketSize);
         }
 
         // update new evnt as well
         newEvnt.collisionSize = bucketSize;
-        newEvnt.collisionPosition = smallestPossible;
     }
 
     // Calendar "class"
@@ -111,14 +112,16 @@
         for (var i = newEvnt.start; i < newEvnt.end; i++) {
             // append newEvnt to this timeslot bucket
             timeslots[i] = createNewBucket(timeslots[i], newEvnt);
+
+            var hasCollision = timeslots[newEvnt.start].length;
+            // collision happens, update all collided events.collisionSize
+            if (hasCollision) {
+                // update existing events with new collision
+                updateCollidedEvnts.call(this, i, newEvnt);
+            }
         }
 
-        var hasCollision = timeslots[newEvnt.start].length;
-        // collision happens, update all collided events.collisionSize
-        if (hasCollision) {
-            // update existing events with new collision
-            updateCollidedEvnts.call(this, newEvnt);
-        }
+        
     }
 
     Calendar.prototype.render = function() {
@@ -135,7 +138,7 @@
             var height = evntToRender.end - evntToRender.start;
             var width = (evntToRender.collisionSize === 0) ?
                             100 :
-                            (100/evntToRender.collisionSize);
+                            Math.floor(100/evntToRender.collisionSize);
             var top = evntToRender.start;
             var left = evntToRender.collisionPosition * width;
 
