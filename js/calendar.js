@@ -6,9 +6,9 @@
 (function($) {
 
     // initialize slot with a value
-    var EMPTYSLOT = [];
+    var EMPTYSLOT = null;
     var EVENT_CLASS = 'event';
-    var MAX_TIMESLOT_COLUMNS = 10;
+    var MAX_TIMESLOT_COLUMNS = 6;
 
     // just assumes jQuery is ready
     if ($ === undefined) {
@@ -36,89 +36,156 @@
             id: uniqueID(),
             start: rawEvent.start,
             end: rawEvent.end,
-            collisionSize: 1, // determines event width
-            collisionPosition: null, // determines left position
-            // info: {},
-            // isAllDay: false;
+            collisions: 0, // helps determine event width
+            rowSize: MAX_TIMESLOT_COLUMNS, // determines event width
+            anchorPoint: null, // determines left position
+            // info: {}
         }
 
         return Evnt;
     }
 
-    function createNewBucket(oldBucket, newEvnt) {
-        var newBucket = [];
-        var oldBucketSize = oldBucket.length;
-        for (var i = 0; i < oldBucketSize; i++) {
-            newBucket.push(oldBucket[i]);
-        }
-        newBucket.push(newEvnt.id);
+    // from start time, return the first free column
+    // returns null if no free columns
+    function checkForFreeSpace(evnt) {
+        var freeColumn = null;
 
-        return newBucket;
+        for (var i = 0; i < MAX_TIMESLOT_COLUMNS; i++) {
+            // slot taken
+            if (this.timeTable[evnt.start][i] === null) {
+                freeColumn = i;
+                break;
+            }
+        }
+
+        return freeColumn;
     }
 
-    function updateCollidedEvnts(timeIndex, newEvnt) {
-        var slot = this.timeslots[timeIndex];
-        var bucketSize = slot.length;
-        var smallestPossible = 0;
-        // [TODO] : basically, if the timeslot doesn't actually fit at all
-        //          we should default to a new column, given column < max
-        var largestPossible = MAX_TIMESLOT_COLUMNS;
-        // compare, for every event newEvnt collides with
-        // newEvnt.collisionPosition = first event that it doesn't collide with
-        for (var i = 0; i < bucketSize; i++) {
-            var collidingEvnt = this.Evnts[slot[i]];
+    // returns the array of IDs that this evnt is colliding with
+    function canItFit(column, evnt) {
+        var collidingEvnts = [];
 
-            if (collidingEvnt.id === newEvnt.id) {
-                continue;
+        for (var i = evnt.start; i < evnt.end; i++) {
+            for (var j = 0; j < MAX_TIMESLOT_COLUMNS; j++) {
+                if (this.timeTable[i][j] !== null) {
+                    var id = this.timeTable[i][j];
+                    collidingEvnts[id] = 'filled';
+                    break;
+                }
             }
-
-            // first ever collision
-            if (collidingEvnt.collisionPosition === null) {
-                collidingEvnt.collisionPosition = 0;
-            }
-            
-            if (collidingEvnt.collisionPosition === smallestPossible) {
-                smallestPossible++;
-            }
-            else if (collidingEvnt.collisionPosition < smallestPossible) {
-
-            }
-            else if (collidingEvnt.collisionPosition > smallestPossible) {
-                smallestPossible = collidingEvnt.collisionPosition - 1;
-            }
-            
-            newEvnt.collisionPosition = smallestPossible;
-            collidingEvnt.collisionSize = (collidingEvnt.collisionSize > bucketSize) ? collidingEvnt.collisionSize : bucketSize; // + new event
-            newEvnt.collisionSize = collidingEvnt.collisionSize;
-
-            console.warn('Event ' + newEvnt.id + ' is overlapping with ' + collidingEvnt.id);
-            console.log('bucket size: ' + bucketSize);
         }
+
+        return collidingEvnts;
+    }
+
+    // TODO problem is in here
+    function _shrinkEvntInTable(collidingEvnts) {
+        for (var collidingEvnt in collidingEvnts) {
+            var id = parseInt(collidingEvnt);
+            var evnt = this.Evnts[id];
+            var shrinkSize = MAX_TIMESLOT_COLUMNS / (evnt.collisions + 1); // 0 based
+
+            // update rowSize now that we're safe to add
+            evnt.rowSize = shrinkSize;
+            for (var i = evnt.start; i < evnt.end; i++) {
+                // bug here: when shrinking, we need to load the old values too
+                var row = [];
+                var shrinkCounter = 0;
+
+                for (var j = 0; j < MAX_TIMESLOT_COLUMNS; j++) {
+                    if (this.timeTable[i][j] !== id) {
+                        row.push(this.timeTable[i][j]);
+                    }
+                    else {
+                        if (shrinkCounter < shrinkSize) {
+                            row.push(evnt.id);
+                            shrinkCounter++;
+                        }
+                        else {
+                            row.push(EMPTYSLOT);
+                        }
+                    }
+                }
+                this.timeTable[i] = row;
+            }
+        }
+    }
+
+    // bump collision counter for other events
+    function shrinkEvnts(collidingEvnts) {
+        var maxCollisions = 0;
+        for (var collidingEvnt in collidingEvnts) {
+            var id = parseInt(collidingEvnt);
+            this.Evnts[id].collisions++;
+
+            maxCollisions = 
+                (this.Evnts[id].collisions > maxCollisions) ?
+                this.Evnts[id].collisions :
+                maxCollisions;
+
+            if (this.Evnts[id].collisions > MAX_TIMESLOT_COLUMNS) {
+                console.error('Cannot add event. It does not fit.');
+                return -1;
+            }
+        }
+
+        _shrinkEvntInTable.call(this, collidingEvnts);
+
+        return maxCollisions;
+    }
+
+    // we checked for free space, it's completely empty so it's safe to add
+    function _fillEvnt(evnt, fromColumn) {
+        for (var i = evnt.start; i < evnt.end; i++) {
+            var row = [];
+            // tODO: shouldn't this really be just
+            // if timetable[i][j] === null, push new id?
+            for (var j = 0; j < fromColumn; j++) {
+                row.push(this.timeTable[i][j]);
+            }
+            var evntSizeCounter = 0;
+            for (var j = fromColumn; j < MAX_TIMESLOT_COLUMNS; j++) {
+                if (evntSizeCounter < evnt.rowSize) {
+                    row.push(evnt.id);
+                    evntSizeCounter++;
+                }
+                else {
+                    row.push(EMPTYSLOT);
+                }
+            }
+            this.timeTable[i] = row;
+        }
+        evnt.anchorPoint = 
+            (fromColumn === 0) ?
+            0 :
+            (MAX_TIMESLOT_COLUMNS / fromColumn) - 1;
     }
 
     // Calendar "class"
-
     // newEvnt: parsed event, should have id, start, end
     Calendar.prototype.addEvnt = function(newEvnt) {
 
         // store the event first
         this.Evnts[newEvnt.id] = newEvnt;
-
-        var timeslots = this.timeslots;
-        // handle collsions
-        for (var i = newEvnt.start; i < newEvnt.end; i++) {
-            // append newEvnt to this timeslot bucket
-            timeslots[i] = createNewBucket(timeslots[i], newEvnt);
-
-            var hasCollision = timeslots[newEvnt.start].length;
-            // collision happens, update all collided events.collisionSize
-            if (hasCollision) {
-                // update existing events with new collision
-                updateCollidedEvnts.call(this, i, newEvnt);
+        var firstFreeColumn = checkForFreeSpace.call(this, newEvnt);
+        var colliders = canItFit.call(this, firstFreeColumn, newEvnt);
+        if (!colliders.length) {
+            _fillEvnt.call(this, newEvnt, firstFreeColumn);
+        }
+        else {
+            var canAdd = shrinkEvnts.call(this, colliders)
+            if(canAdd === -1) {
+                return;
+            }
+            else {
+                // TODO: other events are shrunk, find first free column and add event again
+                // TODO: maybe group these?
+                firstFreeColumn = checkForFreeSpace.call(this, newEvnt);
+                newEvnt.collisions = canAdd;
+                newEvnt.rowSize = MAX_TIMESLOT_COLUMNS / (newEvnt.collisions + 1);
+                _fillEvnt.call(this, newEvnt, firstFreeColumn);
             }
         }
-
-        
     }
 
     Calendar.prototype.render = function() {
@@ -133,11 +200,11 @@
             var evntToRender = this.Evnts[i];
 
             var height = evntToRender.end - evntToRender.start;
-            var width = (evntToRender.collisionSize === 0) ?
+            var width = (evntToRender.rowSize === 0) ?
                             100 :
-                            Math.floor(100/evntToRender.collisionSize);
+                            Math.floor(100/ (MAX_TIMESLOT_COLUMNS / evntToRender.rowSize));
             var top = evntToRender.start;
-            var left = evntToRender.collisionPosition * width;
+            var left = evntToRender.anchorPoint * width;
 
             var eventDiv = $('<div/>');
             eventDiv.addClass(EVENT_CLASS);
@@ -155,18 +222,34 @@
     }
 
     // maybe we can change the format here
-    Calendar.prototype.createTimeslots = function(format) {
+    function createTimeTable(format) {
         // default format = minutes
+        var finishedTable;
         var maxSlots;
+
         switch(format) {
             default:
                 maxSlots = 24*60;
                 break;
         }
 
+        var rows = [];
+        var columns = [];
         for (var i = 0; i < maxSlots; i++) {
-            this.timeslots.push(EMPTYSLOT);
+            rows.push(EMPTYSLOT);
         }
+
+        finishedTable = rows;
+
+        for (var j = 0; j < MAX_TIMESLOT_COLUMNS; j++) {
+            columns.push(EMPTYSLOT);
+        }
+
+        for (var i = 0; i < maxSlots; i++) {
+            finishedTable[i] = columns;
+        }
+
+        return finishedTable;
     }
 
     // Constructor pattern because we want a Calendar "class"
@@ -174,8 +257,7 @@
         // store all the events present in the calendar
         this.Evnts = [];
         // store list of event ids in here to handle collisions
-        this.timeslots = [];
-        this.createTimeslots('minutes');
+        this.timeTable = createTimeTable('minutes');
 
         var evntLength = arguments.length;
 
@@ -196,8 +278,6 @@
     this.CalendarFactory.prototype.createCalendar = function(arguments) {
         return new this.Calendar(arguments);
     }
-    
-
 }(jQuery || window.$));
 
 $(document).ready(function() {
